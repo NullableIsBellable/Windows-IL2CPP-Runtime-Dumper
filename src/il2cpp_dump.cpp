@@ -33,7 +33,7 @@ std::string GetProtectedExportName() {
         while (start > 0 && (isalnum(fileContent[start - 1]) || fileContent[start - 1] == '_')) { --start; }
         fullName = fileContent.substr(start, pos - start + suffix.length());
     }
-    return fullName;
+    return fullName.empty() ? "il2cpp_domain_get_assemblies" : fullName;
 }
 
 void init_il2cpp_api() {
