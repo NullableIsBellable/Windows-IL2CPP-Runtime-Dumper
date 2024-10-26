@@ -22,18 +22,27 @@
 static uint64_t il2cpp_base = 0;
 
 std::string GetProtectedExportName() {
-    const std::string suffix = "_wasting_your_life";
-    std::string fullName;
-    std::ifstream file("GameAssembly.dll", std::ios::binary);
-    assert(!file && "Error Occured when trying to open the GameAssembly dll file!");
-    std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    size_t pos = fileContent.find(suffix);
-    if (pos != std::string::npos) {
-        size_t start = pos;
-        while (start > 0 && (isalnum(fileContent[start - 1]) || fileContent[start - 1] == '_')) { --start; }
-        fullName = fileContent.substr(start, pos - start + suffix.length());
+    HMODULE pe_base = LoadLibraryExA("GameAssembly.dll", NULL, DONT_RESOLVE_DLL_REFERENCES);
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)pe_base;
+    PIMAGE_NT_HEADERS nt_headers = (PIMAGE_NT_HEADERS)((BYTE*)dos_header + dos_header->e_lfanew);
+
+    PIMAGE_OPTIONAL_HEADER optional_header = (PIMAGE_OPTIONAL_HEADER)&nt_headers->OptionalHeader;
+    PIMAGE_DATA_DIRECTORY export_data_directory = &(optional_header->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT]);
+    PIMAGE_EXPORT_DIRECTORY export_directory = (PIMAGE_EXPORT_DIRECTORY)((BYTE*)pe_base + export_data_directory->VirtualAddress);
+
+    DWORD name_count = export_directory->NumberOfNames;
+    PDWORD export_name_table = (PDWORD)((BYTE*)pe_base + export_directory->AddressOfNames);
+
+    std::string protected_export = "_wasting_your_life";
+
+    for (DWORD i = 0; i < export_directory->NumberOfNames; i++) {
+        char* name = (char*)((BYTE*)pe_base + export_name_table[i]);
+        std::string name_buf = std::string(name);
+        if (name_buf.find(protected_export) != std::string::npos) {
+            return name_buf;
+        }
     }
-    return fullName.empty() ? "il2cpp_domain_get_assemblies" : fullName;
+    return "il2cpp_domain_get_assemblies";
 }
 
 void init_il2cpp_api() {
@@ -344,7 +353,6 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
     if (il2cpp_base) {
         LOGD("%s at %" PRIx64"", il2cppModuleName, il2cpp_base);
         LOGI("Loading...");
-        Sleep(2000);
         init_il2cpp_api();
     } else {
         LOGE("Failed to get %s module.", il2cppModuleName);
@@ -436,4 +444,5 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
     }
     outStream.close();
     LOGI("dump done!");
+    Sleep(3000);
 }
