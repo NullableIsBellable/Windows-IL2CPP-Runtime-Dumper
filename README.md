@@ -23,3 +23,8 @@ A tool designed to dump il2cpp games in runtime using the il2cpp exports **(also
 - **Sxitxma** – Developer of the improved dumper.
 - **Nullbit** – Contributor to the `GetProtectedExportName` function.
 - **Perfare** – Original creator of the dumper.
+
+
+## **Contact**
+
+- Sxitxma - Discord: sxitxma (Sxitxma#1000)
