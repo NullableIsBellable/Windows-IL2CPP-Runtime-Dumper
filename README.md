@@ -1,4 +1,4 @@
-Windows Il2Cpp Dumper which also allows to dump games that have the il2cpp export name "il2cpp_domain_get_assemblies" protected
+# Windows Il2Cpp Dumper which also allows to dump games that have the il2cpp export name "il2cpp_domain_get_assemblies" protected
 
 Dumper Includes:
   Outputs const String Fields
