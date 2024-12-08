@@ -249,7 +249,6 @@ std::string dump_method(Il2CppClass *klass) {
             outPut.seekp(-2, outPut.cur);
         }
         outPut << ") { }\n\n";
-        //TODO GenericInstMethod
     }
     return outPut.str();
 }
@@ -259,7 +258,6 @@ std::string dump_property(Il2CppClass *klass) {
     outPut << "\n\t// Properties\n";
     void *iter = nullptr;
     while (auto prop_const = il2cpp_class_get_properties(klass, &iter)) {
-        //TODO attribute
         auto prop = const_cast<PropertyInfo *>(prop_const);
         auto get = il2cpp_property_get_get_method(prop);
         auto set = il2cpp_property_get_set_method(prop);
@@ -313,8 +311,6 @@ std::string dump_field(Il2CppClass *klass) {
     auto is_enum = il2cpp_class_is_enum(klass);
     void *iter = nullptr;
     while (auto field = il2cpp_class_get_fields(klass, &iter)) {
-        bool IsReadonly = false;
-        bool IsStatic = false;
         outPut << "\t";
         auto attrs = il2cpp_field_get_flags(field);
         auto access = attrs & FIELD_ATTRIBUTE_FIELD_ACCESS_MASK;
@@ -341,11 +337,9 @@ std::string dump_field(Il2CppClass *klass) {
         } else {
             if (attrs & FIELD_ATTRIBUTE_STATIC) {
                 outPut << "static ";
-                IsStatic = true;
             }
             if (attrs & FIELD_ATTRIBUTE_INIT_ONLY) {
                 outPut << "readonly ";
-                IsReadonly = true;
             }
         }
         auto field_type = il2cpp_field_get_type(field);
