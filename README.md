@@ -11,6 +11,7 @@ Dumper Includes:
   Outputs Generic Types (Dictionary<TKey, TValue>, List<T>, KeyValuePair<TKey, TValue>, ...)
 
 
+
 Credits:
 
   Sxitxma (improved dumper)
