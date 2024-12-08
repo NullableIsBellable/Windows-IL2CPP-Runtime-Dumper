@@ -1,18 +1,25 @@
-# Windows Il2Cpp Dumper which also allows to dump games that have the il2cpp export name "il2cpp_domain_get_assemblies" protected
+# **Windows Il2Cpp Dumper**
 
-Dumper Includes:
+A powerful tool designed to dump games that utilize the il2cpp export name `"il2cpp_domain_get_assemblies"`—even when it’s protected.
 
-  Outputs const String Fields,
-  Outputs const Boolean Fields
-  Outputs const number Fields (int16, int32, uint16, float, double, ...)
-  Outputs Generic Types (Dictionary<TKey, TValue>, List<T>, KeyValuePair<TKey, TValue>, ...)
+## **Features**
 
+- **Dumping of Constant Fields**  
+  Extracts constant fields such as strings, booleans, and numeric types.
 
+- **Numeric Field Extraction**  
+  Dumps various numeric field types, including:
+  - `int16`, `int32`, `uint16`, `float`, `double`, etc.
 
-Credits:
+- **Supports Generic Types**  
+  Includes the ability to dump:
+  - `Dictionary<TKey, TValue>`
+  - `List<T>`
+  - `KeyValuePair<TKey, TValue>`
+  - And more...
 
-  Sxitxma (improved dumper)
-  
-  Nullbit (contributor for GetProtectedExportName function)
-  
-  Perfare (dumper)
+## **Credits**
+
+- **Sxitxma** – Developer of the improved dumper.
+- **Nullbit** – Contributor to the `GetProtectedExportName` function.
+- **Perfare** – Original creator of the dumper.
