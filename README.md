@@ -2,12 +2,9 @@
 
 Dumper Includes:
 
-  Outputs const String Fields
-  
+  Outputs const String Fields  
   Outputs const Boolean Fields
-  
   Outputs const number Fields (int16, int32, uint16, float, double, ...)
-  
   Outputs Generic Types (Dictionary<TKey, TValue>, List<T>, KeyValuePair<TKey, TValue>, ...)
 
 
