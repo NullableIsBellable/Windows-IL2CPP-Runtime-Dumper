@@ -1,6 +1,7 @@
 #include "il2cpp_dump.h"
 #include <Windows.h>
 #include <cassert>
+#include <chrono>
 
 #include <cstdlib>
 #include <cstring>
@@ -9,6 +10,8 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
+#include <vcruntime_string.h>
+#include <stringapiset.h>
 #include "log.h"
 #include "il2cpp-tabledefs.h"
 #include "il2cpp-types.h"
@@ -21,7 +24,32 @@
 
 static uint64_t il2cpp_base = 0;
 
+struct il2cppString : Il2CppObject // Credits: il2cpp resolver (https://github.com/sneakyevil/IL2CPP_Resolver/blob/main/Unity/Structures/System_String.hpp)
+{
+    int m_iLength;
+    wchar_t m_wString[1024];
+
+    void Clear()
+    {
+        if (!this) return;
+
+        memset(m_wString, 0, static_cast<size_t>(m_iLength) * 2);
+        m_iLength = 0;
+    }
+
+    std::string ToString()
+    {
+        if (!this) return "";
+
+        std::string sRet(static_cast<size_t>(m_iLength) * 3 + 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, m_wString, m_iLength, &sRet[0], static_cast<int>(sRet.size()), 0, 0);
+        return sRet;
+    }
+};
+
+
 std::string GetProtectedExportName() {
+    /* SXITXMA
     const std::string suffix = "_wasting_your_life";
     std::string fullName;
     std::ifstream file("GameAssembly.dll", std::ios::binary);
@@ -34,6 +62,29 @@ std::string GetProtectedExportName() {
         fullName = fileContent.substr(start, pos - start + suffix.length());
     }
     return fullName.empty() ? "il2cpp_domain_get_assemblies" : fullName;
+    */
+    // NULLBIT
+    HMODULE pe_base = LoadLibraryExA(MODULENAME, NULL, DONT_RESOLVE_DLL_REFERENCES);
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)pe_base;
+    PIMAGE_NT_HEADERS nt_headers = (PIMAGE_NT_HEADERS)((BYTE*)dos_header + dos_header->e_lfanew);
+
+    PIMAGE_OPTIONAL_HEADER optional_header = (PIMAGE_OPTIONAL_HEADER)&nt_headers->OptionalHeader;
+    PIMAGE_DATA_DIRECTORY export_data_directory = &(optional_header->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT]);
+    PIMAGE_EXPORT_DIRECTORY export_directory = (PIMAGE_EXPORT_DIRECTORY)((BYTE*)pe_base + export_data_directory->VirtualAddress);
+
+    DWORD name_count = export_directory->NumberOfNames;
+    PDWORD export_name_table = (PDWORD)((BYTE*)pe_base + export_directory->AddressOfNames);
+
+    std::string protected_export = "_wasting_your_life";
+
+    for (DWORD i = 0; i < export_directory->NumberOfNames; i++) {
+        char* name = (char*)((BYTE*)pe_base + export_name_table[i]);
+        std::string name_buf = std::string(name);
+        if (name_buf.find(protected_export) != std::string::npos) {
+            return name_buf;
+        }
+    }
+    return "il2cpp_domain_get_assemblies";
 }
 
 void init_il2cpp_api() {
@@ -101,9 +152,53 @@ bool _il2cpp_type_is_byref(const Il2CppType *type) {
     return byref;
 }
 
+std::string GetFullType(const Il2CppType* type) { // Shows stuff like Dictionary<TKey, TValue>, List<T> etc. 
+    std::string _ = "";
+    if (type->type == IL2CPP_TYPE_GENERICINST) {
+        Il2CppGenericClass* genericClass = type->data.generic_class;
+        _ = il2cpp_class_get_name(genericClass->cached_class);
+        if (_[_.size() - 2] == '`') {
+            _.pop_back(); _.pop_back();
+        }
+        _ += "<";
+        const Il2CppGenericInst* classInst = genericClass->context.class_inst;
+        if (classInst) {
+            for (uint32_t i = 0; i < classInst->type_argc; ++i) {
+                const Il2CppType* argType = classInst->type_argv[i];
+                Il2CppClass* argClass = il2cpp_class_from_type(argType);
+                if (argClass) {
+                    _ += GetFullType(argType);
+                }
+                else {
+                    _ += "UnknownType";
+                }
+
+                if (i < classInst->type_argc - 1) {
+                    _ += ", ";
+                }
+            }
+        }
+        _ += ">";
+    }
+    else {
+        Il2CppClass* typeClass = il2cpp_class_from_type(type);
+        if (typeClass) {
+            _ += il2cpp_class_get_name(typeClass);
+        }
+    }
+    return _;
+}
+
+std::string Field_ReturnType(FieldInfo* field)
+{
+    auto field_type = il2cpp_field_get_type(field);
+    auto field_class = il2cpp_class_from_type(field_type);
+    return std::string(il2cpp_class_get_name(field_class));
+}
+
 std::string dump_method(Il2CppClass *klass) {
     std::stringstream outPut;
-    outPut << "\n\t// Methods\n";
+    outPut << "\n\t// Methods\n\n";
     void *iter = nullptr;
     while (auto method = il2cpp_class_get_methods(klass, &iter)) {
         //TODO attribute
@@ -115,21 +210,16 @@ std::string dump_method(Il2CppClass *klass) {
         } else {
             outPut << "\t// RVA: 0x VA: 0x0";
         }
-        /*if (method->slot != 65535) {
-            outPut << " Slot: " << std::dec << method->slot;
-        }*/
         outPut << "\n\t";
         uint32_t iflags = 0;
         auto flags = il2cpp_method_get_flags(method, &iflags);
         outPut << get_method_modifier(flags);
-        //TODO genericContainerIndex
         auto return_type = il2cpp_method_get_return_type(method);
         if (_il2cpp_type_is_byref(return_type)) {
             outPut << "ref ";
         }
         auto return_class = il2cpp_class_from_type(return_type);
-        outPut << il2cpp_class_get_name(return_class) << " " << il2cpp_method_get_name(method)
-               << "(";
+        outPut << GetFullType(return_type) << " " << il2cpp_method_get_name(method) << "(";
         auto param_count = il2cpp_method_get_param_count(method);
         for (int i = 0; i < (int)param_count; ++i) {
             auto param = il2cpp_method_get_param(method, i);
@@ -151,9 +241,9 @@ std::string dump_method(Il2CppClass *klass) {
                 }
             }
             auto parameter_class = il2cpp_class_from_type(param);
-            outPut << il2cpp_class_get_name(parameter_class) << " "
-                   << il2cpp_method_get_param_name(method, i);
-            outPut << ", ";
+            if (param->type == IL2CPP_TYPE_GENERICINST) outPut << GetFullType(param);
+            else outPut << il2cpp_class_get_name(parameter_class);
+            outPut << " " << il2cpp_method_get_param_name(method, i) << ", ";
         }
         if (param_count > 0) {
             outPut.seekp(-2, outPut.cur);
@@ -186,7 +276,8 @@ std::string dump_property(Il2CppClass *klass) {
             prop_class = il2cpp_class_from_type(param);
         }
         if (prop_class) {
-            outPut << il2cpp_class_get_name(prop_class) << " " << prop_name << " { ";
+            const Il2CppType* skibidi = il2cpp_class_get_type(prop_class);
+            outPut << GetFullType(skibidi) << " " << prop_name << " { ";            
             if (get) {
                 outPut << "get; ";
             }
@@ -203,13 +294,27 @@ std::string dump_property(Il2CppClass *klass) {
     return outPut.str();
 }
 
+#define INIT_CONST_FIELD(type) \
+        outPut << " = ";        \
+        type data;               \
+		il2cpp_field_static_get_value(field, &data)
+
+#define FieldIs(typeName) FieldType == typeName
+
+#define INIT_CONST_NUMBER_FIELD(type, typeName, stdtype) \
+        if (FieldIs(typeName)) {                          \
+            INIT_CONST_FIELD(type);                        \
+            outPut << stdtype << data;                      \
+        }
+
 std::string dump_field(Il2CppClass *klass) {
     std::stringstream outPut;
     outPut << "\n\t// Fields\n";
     auto is_enum = il2cpp_class_is_enum(klass);
     void *iter = nullptr;
     while (auto field = il2cpp_class_get_fields(klass, &iter)) {
-        //TODO attribute
+        bool IsReadonly = false;
+        bool IsStatic = false;
         outPut << "\t";
         auto attrs = il2cpp_field_get_flags(field);
         auto access = attrs & FIELD_ATTRIBUTE_FIELD_ACCESS_MASK;
@@ -236,20 +341,56 @@ std::string dump_field(Il2CppClass *klass) {
         } else {
             if (attrs & FIELD_ATTRIBUTE_STATIC) {
                 outPut << "static ";
+                IsStatic = true;
             }
             if (attrs & FIELD_ATTRIBUTE_INIT_ONLY) {
                 outPut << "readonly ";
+                IsReadonly = true;
             }
         }
         auto field_type = il2cpp_field_get_type(field);
         auto field_class = il2cpp_class_from_type(field_type);
-        outPut << il2cpp_class_get_name(field_class) << " " << il2cpp_field_get_name(field);
-        //TODO 获取构造函数初始化后的字段值
+        outPut << GetFullType(field_type) << " " << il2cpp_field_get_name(field);
         if (attrs & FIELD_ATTRIBUTE_LITERAL && is_enum) {
             uint64_t val = 0;
             il2cpp_field_static_get_value(field, &val);
             outPut << " = " << std::dec << val;
         }
+
+        if (il2cpp_field_is_literal(field)) { // field_is_const
+            std::string FieldType = Field_ReturnType(field);
+
+            if (FieldIs("String")) {
+                INIT_CONST_FIELD(il2cppString*);
+                if (data != nullptr) {
+                    std::string skibidi = data->ToString().c_str();
+                    if (skibidi.size() == 1) {
+                        outPut << "'" << data->ToString().c_str() << "'";
+                    }
+                    else {
+                        outPut << "\"" << data->ToString().c_str() << "\"";
+                    }
+                }
+            }
+
+            if (FieldIs("Boolean")) {
+                INIT_CONST_FIELD(bool);
+                if (data) outPut << "true";
+                else outPut << "false";
+            }
+
+            INIT_CONST_NUMBER_FIELD(int16_t, "Int16", std::dec)
+            INIT_CONST_NUMBER_FIELD(int, "Int32", std::dec)
+            INIT_CONST_NUMBER_FIELD(int64_t, "Int64", std::dec)
+
+            INIT_CONST_NUMBER_FIELD(double, "Double", std::showpoint)
+            INIT_CONST_NUMBER_FIELD(float, "Single", std::showpoint)
+
+            INIT_CONST_NUMBER_FIELD(int16_t, "UInt16", std::dec)
+            INIT_CONST_NUMBER_FIELD(uint32_t, "UInt32", std::dec)
+            INIT_CONST_NUMBER_FIELD(int64_t, "UInt64", std::dec)
+        }
+
         outPut << "; // 0x" << std::hex << il2cpp_field_get_offset(field) << "\n";
     }
     return outPut.str();
@@ -303,7 +444,7 @@ std::string dump_type(const Il2CppType *type) {
     } else {
         outPut << "class ";
     }
-    outPut << il2cpp_class_get_name(klass); //TODO genericContainerIndex
+    outPut << GetFullType(il2cpp_class_get_type(klass));//il2cpp_class_get_name(klass);
     std::vector<std::string> extends;
     auto parent = il2cpp_class_get_parent(klass);
     if (!is_valuetype && !is_enum && parent) {
@@ -356,6 +497,9 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
 
     //start dump
     LOGI("dumping...");
+
+    auto StartTimer = std::chrono::high_resolution_clock::now();
+
     size_t size;
     auto assemblies = il2cpp_domain_get_assemblies(domain, &size);
     std::stringstream imageOutput;
@@ -366,7 +510,6 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
     std::vector<std::string> outPuts;
     if (il2cpp_image_get_class) {
         LOGI("Version greater than 2018.3");
-        //使用il2cpp_image_get_class
         for (int i = 0; i < size; ++i) {
             auto image = il2cpp_assembly_get_image(assemblies[i]);
             std::stringstream imageStr;
@@ -427,7 +570,7 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
         }
     }
     LOGI("write dump file");
-    auto outPath = std::string(outDir).append("dump.cs");
+    auto outPath = std::string(outDir).append("testdump.cs");
     std::ofstream outStream(outPath);
     outStream << imageOutput.str();
     auto count = outPuts.size();
@@ -435,5 +578,7 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
         outStream << outPuts[i];
     }
     outStream.close();
-    LOGI("dump done!");
+    auto EndTimer = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> Timer = EndTimer - StartTimer;
+    LOGI("done!\ndumping took %f seconds!", Timer.count());
 }
