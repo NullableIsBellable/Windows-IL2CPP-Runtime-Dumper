@@ -2,6 +2,8 @@
 
 A tool designed to dump il2cpp games in runtime using the il2cpp exports **(also works for games that have the export `il2cpp_domain_get_assemblies` protected)**.
 
+If the module name of your targeted game is not GameAssembly.dll then you can change it in the il2cpp_dump.h file
+
 ## **Features**
 
 - **Dumping of Constant Fields**  
