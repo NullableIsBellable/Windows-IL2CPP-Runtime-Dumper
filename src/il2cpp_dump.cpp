@@ -564,7 +564,7 @@ void il2cpp_dump(void *handle, char *outDir, const char* il2cppModuleName) {
         }
     }
     LOGI("write dump file");
-    auto outPath = std::string(outDir).append("testdump.cs");
+    auto outPath = std::string(outDir).append("dump.cs");
     std::ofstream outStream(outPath);
     outStream << imageOutput.str();
     auto count = outPuts.size();
