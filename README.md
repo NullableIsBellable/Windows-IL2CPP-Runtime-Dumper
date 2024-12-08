@@ -1,6 +1,6 @@
 # **Windows Il2Cpp Dumper**
 
-A powerful tool designed to dump games that utilize the il2cpp export name `"il2cpp_domain_get_assemblies"`—even when it’s protected.
+A powerful tool designed to dump games utilize the il2cpp export name `"il2cpp_domain_get_assemblies"`—even when it’s protected.
 
 ## **Features**
 
