@@ -1,6 +1,6 @@
 # **Windows Il2Cpp Dumper**
 
-A tool designed to dump games in runtime using the il2cpp exports **(also works for games that have the export `il2cpp_domain_get_assemblies` protected)**.
+A tool designed to dump il2cpp games in runtime using the il2cpp exports **(also works for games that have the export `il2cpp_domain_get_assemblies` protected)**.
 
 ## **Features**
 
