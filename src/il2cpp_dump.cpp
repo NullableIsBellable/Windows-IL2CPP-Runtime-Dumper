@@ -359,10 +359,10 @@ std::string dump_field(Il2CppClass *klass) {
                 if (data != nullptr) {
                     std::string skibidi = data->ToString().c_str();
                     if (skibidi.size() == 1) {
-                        outPut << "'" << data->ToString().c_str() << "'";
+                        outPut << "'" << skibidi.c_str() << "'";
                     }
                     else {
-                        outPut << "\"" << data->ToString().c_str() << "\"";
+                        outPut << "\"" << skibidi.c_str() << "\"";
                     }
                 }
             }
